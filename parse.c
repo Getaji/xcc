@@ -16,6 +16,7 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
+// 位置表示機能付きのエラー報告関数
 void error_at(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -60,6 +61,7 @@ int expect_number() {
   return val;
 }
 
+// トークンが終端なら真を返す
 bool at_eof() {
   return token->kind == TK_EOF;
 }
@@ -126,96 +128,110 @@ Token *tokenize(char *p) {
   return head.next;
 }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+// 新しいトークンを生成する
+Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
+  return node;
+}
+
+// 新しい二項演算トークンを生成する
+Node *new_binary_node(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = new_node(kind);
   node->lhs = lhs;
   node->rhs = rhs;
   return node;
 }
 
-Node *new_node_num(int val) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_NUM;
+// 新しい数値トークンを生成する
+Node *new_num_node(int val) {
+  Node *node = new_node(ND_NUM);
   node->val = val;
   return node;
 }
 
+// 式の構文木exprを生成する
 // expr = equality
 Node *expr() {
   return equality();
 }
 
+// 一致比較の構文木equalityを生成する
 // equality = relational ("==" relational | "!=" relational)*
 Node *equality() {
   Node *node = relational();
 
   for (;;) {
     if (consume("=="))
-      node = new_node(ND_EQ, node, relational());
+      node = new_binary_node(ND_EQ, node, relational());
     else if (consume("!="))
-      node = new_node(ND_NE, node, relational());
+      node = new_binary_node(ND_NE, node, relational());
     else
       return node;
   }
 }
 
+// 関係比較の構文木relationalを生成する
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 Node *relational() {
   Node *node = add();
 
   for (;;) {
     if (consume("<"))
-      node = new_node(ND_LT, node, add());
+      node = new_binary_node(ND_LT, node, add());
     else if (consume("<="))
-      node = new_node(ND_LE, node, add());
+      node = new_binary_node(ND_LE, node, add());
     else if (consume(">"))
-      node = new_node(ND_LT, add(), node);
+      node = new_binary_node(ND_LT, add(), node);
     else if (consume(">="))
-      node = new_node(ND_LE, add(), node);
+      node = new_binary_node(ND_LE, add(), node);
     else
       return node;
   }
 }
 
+// 加算・減算の構文木addを生成する
 // add = mul ("+" mul | "-" mul)*
 Node *add() {
   Node *node = mul();
 
   for (;;) {
     if (consume("+"))
-      node = new_node(ND_ADD, node, mul());
+      node = new_binary_node(ND_ADD, node, mul());
     else if (consume("-"))
-      node = new_node(ND_SUB, node, mul());
+      node = new_binary_node(ND_SUB, node, mul());
     else
       return node;
   }
 }
 
+// 乗算・除算の構文木mulを生成する
 // mul = unary ("*" unary | "/" unary)*
 Node *mul() {
   Node *node = unary();
 
   for (;;) {
     if (consume("*"))
-      node = new_node(ND_MUL, node, unary());
+      node = new_binary_node(ND_MUL, node, unary());
     else if (consume("/"))
-      node = new_node(ND_DIV, node, unary());
+      node = new_binary_node(ND_DIV, node, unary());
     else
       return node;
   }
 }
 
+// 単項演算の構文木unaryを生成する
 // unary = ("+" | "-")? unary
 //       | primary
 Node *unary() {
   if (consume("+"))
     return unary();
   if (consume("-"))
-    return new_node(ND_SUB, new_node_num(0), unary());
+    return new_binary_node(ND_SUB, new_num_node(0), unary());
   return primary();
 }
 
+// 括弧で囲われた式あるいは数値の構文木primaryを生成する
 // primary = "(" expr ")" | num
 Node *primary() {
   if (consume("(")) {
@@ -224,5 +240,5 @@ Node *primary() {
     return node;
   }
 
-  return new_node_num(expect_number());
+  return new_num_node(expect_number());
 }

@@ -1,6 +1,6 @@
 #include "xcc.h"
 
-// 抽象構文木を解析してアセンブリを出力する
+// 抽象構文木を解析してアセンブリコードを出力する
 void gen(Node *node) {
   if (node->kind == ND_NUM) {
     printf("  push %d\n", node->val);
