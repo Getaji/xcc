@@ -6,6 +6,8 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
+Node *code[100];
+
 // エラーを報告するための関数
 // printfと同じ引数を取る
 void error(char *fmt, ...) {
@@ -39,6 +41,16 @@ bool consume(char *op) {
     return false;
   token = token->next;
   return true;
+}
+
+// 次のトークンが識別子のときには、トークンを1つ読み進めて返す
+// それ以外の場合には偽を返す
+Token *consume_ident() {
+  if (token->kind != TK_IDENT)
+    return NULL;
+  Token *tokenIdent = token;
+  token = token->next;
+  return tokenIdent;
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める
@@ -107,7 +119,7 @@ Token *tokenize(char *p) {
     }
 
     // 1文字の演算子と括弧
-    if (strchr("+-*/()<>", *p)) {
+    if (strchr("+-*/()<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -118,6 +130,12 @@ Token *tokenize(char *p) {
       char *q = p;
       cur->val = strtol(p, &p, 10);
       cur->len = p - q;
+      continue;
+    }
+
+    // 変数リテラル
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
       continue;
     }
 
@@ -150,10 +168,35 @@ Node *new_num_node(int val) {
   return node;
 }
 
+// 代入の構文木assignを生成する
+// assign = equality ("=" assign)?
+Node *assign() {
+  Node *node = equality();
+  if (consume("="))
+    node = new_binary_node(ND_ASSIGN, node, assign());
+  return node;
+}
+
 // 式の構文木exprを生成する
-// expr = equality
+// expr = assign
 Node *expr() {
-  return equality();
+  return assign();
+}
+
+// 文の構文木stmtを生成する
+// stmt = expr ";"
+Node *stmt() {
+  Node *node = expr();
+  expect(";");
+  return node;
+}
+
+void program() {
+  int i = 0;
+  while (!at_eof()) {
+    code[i++] = stmt();
+  }
+  code[i] = NULL;
 }
 
 // 一致比較の構文木equalityを生成する
@@ -234,11 +277,21 @@ Node *unary() {
 // 括弧で囲われた式あるいは数値の構文木primaryを生成する
 // primary = "(" expr ")" | num
 Node *primary() {
+  // 括弧で囲われているなら式として再帰的に構文木を生成する
   if (consume("(")) {
     Node *node = expr();
     expect(")");
     return node;
   }
 
+  // 識別子ならローカル変数ノードを返す
+  Token *tok = consume_ident();
+  if (tok) {
+    Node *node = new_node(ND_LVAR);
+    node->offset = (tok->str[0] - 'a' + 1) * 8;
+    return node;
+  }
+
+  // どれでもなければ数値ノードを返す
   return new_num_node(expect_number());
 }
