@@ -12,9 +12,8 @@ typedef enum {
   TK_EOF,      // 入力の終わり
 } TokenKind;
 
-typedef struct Token Token;
-
 // トークン型
+typedef struct Token Token;
 struct Token {
   TokenKind kind; // トークンの種類
   Token *next;    // 次の入力トークン
@@ -22,11 +21,21 @@ struct Token {
   char *str;      // トークン文字列
 };
 
+// 入力プログラム
+char *user_input;
+
 // 現在着目しているトークン
 Token *token;
 
-// 入力プログラム
-char *user_input;
+// エラーを報告するための関数
+// printfと同じ引数を取る
+void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
 
 void error_at(char *loc, char *fmt, ...) {
   va_list ap;
@@ -36,16 +45,6 @@ void error_at(char *loc, char *fmt, ...) {
   fprintf(stderr, "%s\n", user_input);
   fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
   fprintf(stderr, "^ ");
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
-}
-
-// エラーを報告するための関数
-// printfと同じ引数を取る
-void error(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
@@ -72,7 +71,7 @@ void expect(char op) {
 // それ以外の場合にはエラーを報告する
 int expect_number() {
   if (token->kind != TK_NUM)
-    error_at(token->str, "数ではありません");
+    error_at(token->str, "数値ではありません");
   int val = token->val;
   token = token->next;
   return val;
@@ -82,7 +81,8 @@ bool at_eof() {
   return token->kind == TK_EOF;
 }
 
-Token* new_token(TokenKind kind, Token *cur, char *str) {
+// 新しいトークンを生成し、現在のトークンの次のトークンとして設定する
+Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
@@ -97,23 +97,26 @@ Token *tokenize(char *p) {
   Token *cur = &head;
 
   while (*p) {
+    // 空白を無視する
     if (isspace(*p)) {
       p++;
       continue;
     }
 
+    // 演算子
     if (strchr("+-*/()", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
 
+    // 整数リテラル
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p);
       cur->val = strtol(p, &p, 10);
       continue;
     }
 
-    error_at(p, "トークナイズできません");
+    error_at(p, "無効なトークンです");
   }
 
   new_token(TK_EOF, cur, p);
@@ -129,9 +132,8 @@ typedef enum {
   ND_NUM, // 整数
 } NodeKind;
 
-typedef struct Node Node;
-
 // 抽象構文木のノードの型
+typedef struct Node Node;
 struct Node {
   NodeKind kind; // ノードの型
   Node *lhs;     // 左辺
@@ -156,9 +158,10 @@ Node *new_node_num(int val) {
 
 Node *expr();
 Node *mul();
+Node *unary();
 Node *primary();
 
-// 抽象構文木を生成する
+// expr = mul ("+" mul | "-" mul)*
 Node *expr() {
   Node *node = mul();
 
@@ -172,19 +175,31 @@ Node *expr() {
   }
 }
 
+// mul = unary ("*" unary | "/" unary)*
 Node *mul() {
-  Node *node = primary();
+  Node *node = unary();
 
   for (;;) {
     if (consume('*'))
-      node = new_node(ND_MUL, node, primary());
+      node = new_node(ND_MUL, node, unary());
     else if (consume('/'))
-      node = new_node(ND_DIV, node, primary());
+      node = new_node(ND_DIV, node, unary());
     else
       return node;
   }
 }
 
+// unary = ("+" | "-")? unary
+//       | primary
+Node *unary() {
+  if (consume('+'))
+    return unary();
+  if (consume('-'))
+    return new_node(ND_SUB, new_node_num(0), unary());
+  return primary();
+}
+
+// primary = "(" expr ")" | num
 Node *primary() {
   if (consume('(')) {
     Node *node = expr();
