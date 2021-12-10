@@ -67,4 +67,9 @@ assert 1 'abc=10;abc==10;'
 assert 1 'abc=10;abc!=0;'
 assert 1 'abc=10;abc>9;'
 
+assert 10 'return 10;'
+assert 10 '0; return 10;'
+assert 10 'a=10; return a;'
+assert 10 'a=9; return a+1;'
+
 echo OK

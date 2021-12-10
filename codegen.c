@@ -17,6 +17,14 @@ void gen_lval(Node *node) {
 // 抽象構文木を解析してアセンブリコードを出力する
 void gen(Node *node) {
   switch (node->kind) {
+    // returnならスタックから値を取り出してRAXに入れる
+    case ND_RETURN:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      printf("  ret\n");
+      return;
     // 数値なら値をスタックに積んで終わる
     case ND_NUM:
       printf("  push %d\n", node->val);

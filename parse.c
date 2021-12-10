@@ -34,7 +34,7 @@ void error_at(char *loc, char *fmt, ...) {
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 // それ以外の場合には偽を返す
-bool consume(char *op) {
+bool consume_reserved(char *op) {
   if (token->kind != TK_RESERVED ||
       strlen(op) != token->len ||
       memcmp(token->str, op, token->len))
@@ -51,6 +51,15 @@ Token *consume_ident() {
   Token *tokenIdent = token;
   token = token->next;
   return tokenIdent;
+}
+
+// 次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
+// それ以外の場合には偽を返す
+bool consume_token(NodeKind kind) {
+  if (token->kind != kind)
+    return false;
+  token = token->next;
+  return true;
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める
@@ -117,6 +126,13 @@ char *match_alphabets(char *p) {
   return s;
 }
 
+int is_alnum(char c) {
+  return ('a' <= c && c <= 'z') ||
+         ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') ||
+         (c == '_');
+}
+
 // 入力文字列pをトークナイズして返す
 Token *tokenize(char *p) {
   Token head;
@@ -143,6 +159,13 @@ Token *tokenize(char *p) {
     // 1文字の演算子と括弧
     if (strchr("+-*/()<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
+      continue;
+    }
+
+    if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p, 1);
+      cur->len = 6;
+      p += 6;
       continue;
     }
 
@@ -197,7 +220,7 @@ Node *new_num_node(int val) {
 // assign = equality ("=" assign)?
 Node *assign() {
   Node *node = equality();
-  if (consume("="))
+  if (consume_reserved("="))
     node = new_binary_node(ND_ASSIGN, node, assign());
   return node;
 }
@@ -211,8 +234,17 @@ Node *expr() {
 // 文の構文木stmtを生成する
 // stmt = expr ";"
 Node *stmt() {
-  Node *node = expr();
-  expect(";");
+  Node *node;
+
+  if (consume_token(TK_RETURN)) {
+    node = new_node(ND_RETURN);
+    node->lhs = expr();
+  } else {
+    node = expr();
+  }
+
+  if (!consume_reserved(";"))
+    error_at(token->str, "';'ではないトークンです");
   return node;
 }
 
@@ -231,9 +263,9 @@ Node *equality() {
   Node *node = relational();
 
   for (;;) {
-    if (consume("=="))
+    if (consume_reserved("=="))
       node = new_binary_node(ND_EQ, node, relational());
-    else if (consume("!="))
+    else if (consume_reserved("!="))
       node = new_binary_node(ND_NE, node, relational());
     else
       return node;
@@ -246,13 +278,13 @@ Node *relational() {
   Node *node = add();
 
   for (;;) {
-    if (consume("<"))
+    if (consume_reserved("<"))
       node = new_binary_node(ND_LT, node, add());
-    else if (consume("<="))
+    else if (consume_reserved("<="))
       node = new_binary_node(ND_LE, node, add());
-    else if (consume(">"))
+    else if (consume_reserved(">"))
       node = new_binary_node(ND_LT, add(), node);
-    else if (consume(">="))
+    else if (consume_reserved(">="))
       node = new_binary_node(ND_LE, add(), node);
     else
       return node;
@@ -265,9 +297,9 @@ Node *add() {
   Node *node = mul();
 
   for (;;) {
-    if (consume("+"))
+    if (consume_reserved("+"))
       node = new_binary_node(ND_ADD, node, mul());
-    else if (consume("-"))
+    else if (consume_reserved("-"))
       node = new_binary_node(ND_SUB, node, mul());
     else
       return node;
@@ -280,9 +312,9 @@ Node *mul() {
   Node *node = unary();
 
   for (;;) {
-    if (consume("*"))
+    if (consume_reserved("*"))
       node = new_binary_node(ND_MUL, node, unary());
-    else if (consume("/"))
+    else if (consume_reserved("/"))
       node = new_binary_node(ND_DIV, node, unary());
     else
       return node;
@@ -293,9 +325,9 @@ Node *mul() {
 // unary = ("+" | "-")? unary
 //       | primary
 Node *unary() {
-  if (consume("+"))
+  if (consume_reserved("+"))
     return unary();
-  if (consume("-"))
+  if (consume_reserved("-"))
     return new_binary_node(ND_SUB, new_num_node(0), unary());
   return primary();
 }
@@ -312,7 +344,7 @@ LVar *find_lvar(Token *tok) {
 // primary = "(" expr ")" | num
 Node *primary() {
   // 括弧で囲われているなら式として再帰的に構文木を生成する
-  if (consume("(")) {
+  if (consume_reserved("(")) {
     Node *node = expr();
     expect(")");
     return node;
