@@ -95,6 +95,28 @@ bool starts_with(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
+// 文字列の先頭からアルファベットで構成された文字列部分を切り出す
+char *match_alphabets(char *p) {
+  int len = 0;
+
+  while (p[len]) {
+    if ('a' <= p[len] && p[len] <= 'z') {
+      len++;
+    } else {
+      break;
+    }
+  }
+
+  if (len == 0) {
+    return NULL;
+  }
+
+  char *s = (char*)malloc(sizeof(char) * len);
+  memcpy(s, p, len);
+
+  return s;
+}
+
 // 入力文字列pをトークナイズして返す
 Token *tokenize(char *p) {
   Token head;
@@ -134,8 +156,11 @@ Token *tokenize(char *p) {
     }
 
     // 変数リテラル
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
+    char *ident_str = match_alphabets(p);
+    if (ident_str) {
+      cur = new_token(TK_IDENT, cur, ident_str, 1);
+      cur->len = strlen(ident_str);
+      p += cur->len;
       continue;
     }
 
@@ -191,6 +216,7 @@ Node *stmt() {
   return node;
 }
 
+// 終端に到達するまでstmtを読み込む
 void program() {
   int i = 0;
   while (!at_eof()) {
@@ -274,6 +300,14 @@ Node *unary() {
   return primary();
 }
 
+// 変数を名前で検索する。見つからなかった場合はNULLを返す。
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next)
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+      return var;
+  return NULL;
+}
+
 // 括弧で囲われた式あるいは数値の構文木primaryを生成する
 // primary = "(" expr ")" | num
 Node *primary() {
@@ -288,7 +322,24 @@ Node *primary() {
   Token *tok = consume_ident();
   if (tok) {
     Node *node = new_node(ND_LVAR);
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
+
+    LVar *lvar = find_lvar(tok);
+    if (lvar) {
+      node->offset = lvar->offset;
+    } else {
+      lvar = calloc(1, sizeof(LVar));
+      lvar->name = tok->str;
+      lvar->len = tok->len;
+      if (locals) {
+        lvar->next = locals;
+        lvar->offset = locals->offset + 8;
+      } else {
+        lvar->offset = 8;
+      }
+      node->offset = lvar->offset;
+      locals = lvar;
+    }
+
     return node;
   }
 

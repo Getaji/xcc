@@ -51,10 +51,20 @@ assert 0 '1>=2;'
 
 assert 10 'a=10;'
 assert 10 'b=10;'
+assert 10 'a=10;a;'
 assert 10 'a=9;a+1;'
 assert 10 'a=3;b=7;a+b;'
 assert 1 'a=10;a==10;'
 assert 1 'a=10;a!=0;'
 assert 1 'a=10;a>9;'
+
+assert 10 'abc=10;'
+assert 10 'def=10;'
+assert 10 'abc=10;abc;'
+assert 10 'abc=9;abc+1;'
+assert 10 'abc=3;def=7;abc+def;'
+assert 1 'abc=10;abc==10;'
+assert 1 'abc=10;abc!=0;'
+assert 1 'abc=10;abc>9;'
 
 echo OK

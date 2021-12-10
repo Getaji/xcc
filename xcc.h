@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <regex.h>
 
 // -----------------------------------------------------------------------------
 // Parser
@@ -52,6 +53,15 @@ struct Node {
   int offset;    // kindがND_LVARの場合のみ使う
 };
 
+// ローカル変数の型
+typedef struct LVar LVar;
+struct LVar {
+  LVar *next; // 次の変数かNULL
+  char *name; // 変数の名前
+  int len;    // 名前の長さ
+  int offset; // RBPからのオフセット
+};
+
 extern void error(char *fmt, ...);
 extern void error_at(char *loc, char *fmt, ...);
 extern Token *tokenize(char*);
@@ -80,3 +90,4 @@ extern void gen(Node *node);
 extern char *user_input;
 extern Token *token;
 extern Node *code[100];
+LVar *locals;
