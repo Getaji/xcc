@@ -53,7 +53,7 @@ Token *consume_ident() {
   return tokenIdent;
 }
 
-// 次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
+// 次のトークンが期待している種類のときには、トークンを1つ読み進めて真を返す
 // それ以外の場合には偽を返す
 bool consume_token(NodeKind kind) {
   if (token->kind != kind)
@@ -126,7 +126,8 @@ char *match_alphabets(char *p) {
   return s;
 }
 
-int is_alnum(char c) {
+// 文字が英数字またはアンダースコアなら真を返す
+bool is_alnum(char c) {
   return ('a' <= c && c <= 'z') ||
          ('A' <= c && c <= 'Z') ||
          ('0' <= c && c <= '9') ||
