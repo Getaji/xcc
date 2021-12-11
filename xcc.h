@@ -47,12 +47,12 @@ typedef enum {
   ND_NUM,    // 整数
   ND_RETURN, // return
   ND_IF,     // if
-  ND_ELSE,   // if
+  ND_ELSE,   // else
   ND_WHILE,  // while
 } NodeKind;
 
 // if構文の型
-typedef struct Ifs Ifs;
+typedef struct IfNodes IfNodes;
 
 // while構文の型
 typedef struct WhileNodes WhileNodes;
@@ -60,16 +60,16 @@ typedef struct WhileNodes WhileNodes;
 // 抽象構文木のノードの型
 typedef struct Node Node;
 struct Node {
-  NodeKind kind; // ノードの型
-  Node *lhs;     // 左辺
-  Node *rhs;     // 右辺
-  int val;       // kindがND_NUMの場合のみ使う
-  int offset;    // kindがND_LVARの場合のみ使う
-  Ifs *ifs;      // if構文の情報
+  NodeKind kind;      // ノードの型
+  Node *lhs;          // 左辺
+  Node *rhs;          // 右辺
+  int val;            // kindがND_NUMの場合のみ使う
+  int offset;         // kindがND_LVARの場合のみ使う
+  IfNodes *ifs;       // if構文の情報
   WhileNodes *whiles; // while構文の情報
 };
 
-struct Ifs {
+struct IfNodes {
   Node *cond;
   Node *then_body;
   Node *else_body;

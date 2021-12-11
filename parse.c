@@ -271,7 +271,7 @@ Node *stmt() {
 
   if (consume_token(TK_IF)) {
     node = new_node(ND_IF);
-    node->ifs = calloc(1, sizeof(Ifs));
+    node->ifs = calloc(1, sizeof(IfNodes));
     expect("(");
     node->ifs->cond = expr();
     expect(")");
