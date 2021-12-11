@@ -73,4 +73,9 @@ assert 10 'a=10; return a;'
 assert 10 'a=9; return a+1;'
 assert 10 'return 10; 9;'
 
+assert 10 'if (0==0) 10;'
+assert 10 'if (0==1) 9; 10;'
+assert 10 'if (0==0) 10; else 9;'
+assert 10 'if (0==1) 9; else 10;'
+
 echo OK

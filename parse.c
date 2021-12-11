@@ -6,7 +6,18 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
+// トップレベルのノードの配列
 Node *code[100];
+
+// ローカル変数
+LVar *locals = NULL;
+
+// アセンブリのラベルに固有の名前をつけるためのラベル
+
+// アセンブリラベルカウンタ: if(end)
+int label_counter_if = 0;
+// アセンブリラベルカウンタ: else
+// int label_counter_else = 0;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -55,7 +66,7 @@ Token *consume_ident() {
 
 // 次のトークンが期待している種類のときには、トークンを1つ読み進めて真を返す
 // それ以外の場合には偽を返す
-bool consume_token(NodeKind kind) {
+bool consume_token(TokenKind kind) {
   if (token->kind != kind)
     return false;
   token = token->next;
@@ -164,9 +175,20 @@ Token *tokenize(char *p) {
     }
 
     if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p, 1);
-      cur->len = 6;
+      cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;
+      continue;
+    }
+
+    if (strncmp(p, "if", 2) == 0 && !is_alnum(p[2])) {
+      cur = new_token(TK_IF, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strncmp(p, "else", 4) == 0 && !is_alnum(p[4])) {
+      cur = new_token(TK_ELSE, cur, p, 4);
+      p += 4;
       continue;
     }
 
@@ -234,8 +256,27 @@ Node *expr() {
 
 // 文の構文木stmtを生成する
 // stmt = expr ";"
+//      | "if" "(" expr ")" stmt ("else" stmt)?
+//      | "return" expr ";"
 Node *stmt() {
   Node *node;
+
+  if (consume_token(TK_IF)) {
+    node = new_node(ND_IF);
+    node->ifs = calloc(1, sizeof(Ifs));
+    expect("(");
+    node->ifs->cond = expr();
+    expect(")");
+    node->ifs->then_body = stmt();
+
+    if (consume_token(TK_ELSE)) {
+      node->ifs->else_body = stmt();
+    }
+
+    node->ifs->counter = label_counter_if++;
+
+    return node;
+  }
 
   if (consume_token(TK_RETURN)) {
     node = new_node(ND_RETURN);

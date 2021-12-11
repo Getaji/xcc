@@ -14,6 +14,8 @@
 typedef enum {
   TK_RESERVED, // 記号
   TK_RETURN,   // return
+  TK_IF,       // if
+  TK_ELSE,     // else
   TK_IDENT,    // 識別子
   TK_NUM,      // 整数
   TK_EOF,      // 入力の終わり
@@ -43,7 +45,12 @@ typedef enum {
   ND_LE,     // <=
   ND_NUM,    // 整数
   ND_RETURN, // return
+  ND_IF,     // if
+  ND_ELSE,     // if
 } NodeKind;
+
+// if構文の型
+typedef struct Ifs Ifs;
 
 // 抽象構文木のノードの型
 typedef struct Node Node;
@@ -53,6 +60,14 @@ struct Node {
   Node *rhs;     // 右辺
   int val;       // kindがND_NUMの場合のみ使う
   int offset;    // kindがND_LVARの場合のみ使う
+  Ifs *ifs;      // if構文の情報
+};
+
+struct Ifs {
+  Node *cond;
+  Node *then_body;
+  Node *else_body;
+  int counter;
 };
 
 // ローカル変数の型
@@ -92,4 +107,5 @@ extern void gen(Node *node);
 extern char *user_input;
 extern Token *token;
 extern Node *code[100];
-LVar *locals;
+extern LVar *locals;
+extern int label_counter_if;

@@ -17,6 +17,24 @@ void gen_lval(Node *node) {
 // 抽象構文木を解析してアセンブリコードを出力する
 void gen(Node *node) {
   switch (node->kind) {
+    // if
+    case ND_IF:
+      gen(node->ifs->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      if (node->ifs->else_body) {
+        printf("  je .Lelse%d\n", node->ifs->counter);
+      } else {
+        printf("  je .Lend%d\n", node->ifs->counter);
+      }
+      gen(node->ifs->then_body);
+      if (node->ifs->else_body) {
+        printf("  jmp .Lend%d\n", node->ifs->counter);
+        printf(".Lelse%d:\n", node->ifs->counter);
+        gen(node->ifs->else_body);
+      }
+      printf(".Lend%d:\n", node->ifs->counter);
+      return;
     // returnならスタックから値を取り出してRAXに入れる
     case ND_RETURN:
       gen(node->lhs);
