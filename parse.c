@@ -173,7 +173,7 @@ Token *tokenize(char *p) {
     }
 
     // 1文字の演算子と括弧
-    if (strchr("+-*/()<>=;", *p)) {
+    if (strchr("+-*/(){}<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -272,12 +272,34 @@ Node *expr() {
 
 // 文の構文木stmtを生成する
 // stmt = expr ";"
+//      | "{" stmt* "}"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      | "return" expr ";"
 Node *stmt() {
   Node *node;
+
+  if (consume_reserved("{")) {
+    Node *node = new_node(ND_BLOCK);
+
+    // ブロック内の行ノード配列を動的に確保する
+    Node **nodes = (Node**)calloc(STMT_ARR_ALLOC_UNIT, sizeof(Node));
+    int current_size = STMT_ARR_ALLOC_UNIT;
+    int count = 0;
+
+    while (!consume_reserved("}")) {
+      // 確保してあるサイズを超えたらリアロケート
+      if (count >= current_size) {
+        current_size += STMT_ARR_ALLOC_UNIT;
+        nodes = realloc(nodes, current_size);
+      }
+      nodes[count++] = stmt();
+    }
+    node->stmts = nodes;
+    node->stmts_len = count;
+    return node;
+  }
 
   if (consume_token(TK_IF)) {
     node = new_node(ND_IF);

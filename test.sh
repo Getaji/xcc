@@ -86,4 +86,9 @@ assert 10 'for (x = 10; x < 0; x = x + 1) x;'
 assert 10 'x = 0; for (; x < 10;) x = x + 1;'
 assert 10 'for (;;) return 10;'
 
+assert 10 '{10;}'
+assert 10 '{9; 10;}'
+assert 10 '{return 10; 9;}'
+assert 10 '{} 10;'
+
 echo OK

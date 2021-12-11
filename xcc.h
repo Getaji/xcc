@@ -51,6 +51,7 @@ typedef enum {
   ND_ELSE,   // else
   ND_WHILE,  // while
   ND_FOR,    // for
+  ND_BLOCK,  // { stmt* }
   ND_EMPTY,
 } NodeKind;
 
@@ -74,6 +75,8 @@ struct Node {
   IfNodes *ifs;       // if構文の情報
   WhileNodes *whiles; // while構文の情報
   ForNodes *fors;     // for構文の情報
+  Node **stmts;       // ブロックなどが持つ複数ノード
+  int stmts_len;    // stmtsの長さ
 };
 
 struct IfNodes {
@@ -138,3 +141,7 @@ extern LVar *locals;
 extern int label_counter_if;
 extern int label_counter_while;
 extern int label_counter_for;
+
+// ブロック内の行ノードを保持する配列のアロケート単位
+// パース時にこの単位でサイズを超えるたびにリアロケートする
+#define STMT_ARR_ALLOC_UNIT 10

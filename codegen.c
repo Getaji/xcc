@@ -17,6 +17,14 @@ void gen_lval(Node *node) {
 // 抽象構文木を解析してアセンブリコードを出力する
 void gen(Node *node) {
   switch (node->kind) {
+    // block
+    case ND_BLOCK:
+      for (int i = 0; i < node->stmts_len;) {
+        gen(node->stmts[i++]);
+        if (i < node->stmts_len)
+          printf("  pop rax\n");
+      }
+      return;
     // if
     case ND_IF:
       gen(node->ifs->cond);
