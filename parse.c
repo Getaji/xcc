@@ -292,7 +292,7 @@ Node *stmt() {
       // 確保してあるサイズを超えたらリアロケート
       if (count >= current_size) {
         current_size += STMT_ARR_ALLOC_UNIT;
-        nodes = realloc(nodes, current_size);
+        nodes = (Node**)realloc(nodes, sizeof(Node) * current_size);
       }
       nodes[count++] = stmt();
     }
