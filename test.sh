@@ -78,4 +78,7 @@ assert 10 'if (0==1) 9; 10;'
 assert 10 'if (0==0) 10; else 9;'
 assert 10 'if (0==1) 9; else 10;'
 
+assert 10 'x = 0; while (x < 10) x = x + 1; x;'
+assert 10 'x = 10; while (x < 0) x = x + 1; x;'
+
 echo OK

@@ -14,10 +14,11 @@ LVar *locals = NULL;
 
 // アセンブリのラベルに固有の名前をつけるためのラベル
 
-// アセンブリラベルカウンタ: if(end)
+// アセンブリラベルカウンタ: if
 int label_counter_if = 0;
-// アセンブリラベルカウンタ: else
-// int label_counter_else = 0;
+
+// アセンブリラベルカウンタ: while
+int label_counter_while = 0;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -192,6 +193,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
+      cur = new_token(TK_WHILE, cur, p, 5);
+      p += 5;
+      continue;
+    }
+
     // 整数リテラル
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p, 0);
@@ -257,6 +264,7 @@ Node *expr() {
 // 文の構文木stmtを生成する
 // stmt = expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
+//      | "while" "(" expr ")" stmt
 //      | "return" expr ";"
 Node *stmt() {
   Node *node;
@@ -274,6 +282,19 @@ Node *stmt() {
     }
 
     node->ifs->counter = label_counter_if++;
+
+    return node;
+  }
+
+  if (consume_token(TK_WHILE)) {
+    node = new_node(ND_WHILE);
+    node->whiles = calloc(1, sizeof(WhileNodes));
+    expect("(");
+    node->whiles->cond = expr();
+    expect(")");
+    node->whiles->body = stmt();
+
+    node->whiles->counter = label_counter_while++;
 
     return node;
   }

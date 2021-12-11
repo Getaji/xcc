@@ -23,17 +23,28 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       if (node->ifs->else_body) {
-        printf("  je .Lelse%d\n", node->ifs->counter);
+        printf("  je .LForElse%d\n", node->ifs->counter);
       } else {
-        printf("  je .Lend%d\n", node->ifs->counter);
+        printf("  je .LForEnd%d\n", node->ifs->counter);
       }
       gen(node->ifs->then_body);
       if (node->ifs->else_body) {
-        printf("  jmp .Lend%d\n", node->ifs->counter);
-        printf(".Lelse%d:\n", node->ifs->counter);
+        printf("  jmp .LForEnd%d\n", node->ifs->counter);
+        printf(".LForElse%d:\n", node->ifs->counter);
         gen(node->ifs->else_body);
       }
-      printf(".Lend%d:\n", node->ifs->counter);
+      printf(".LForEnd%d:\n", node->ifs->counter);
+      return;
+    // while
+    case ND_WHILE:
+      printf(".LWhileBegin%d:\n", node->whiles->counter);
+      gen(node->whiles->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .LWhileEnd%d\n", node->whiles->counter);
+      gen(node->whiles->body);
+      printf("  jmp .LWhileBegin%d\n", node->whiles->counter);
+      printf(".LWhileEnd%d:\n", node->whiles->counter);
       return;
     // returnならスタックから値を取り出してRAXに入れる
     case ND_RETURN:
