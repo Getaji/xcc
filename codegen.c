@@ -46,6 +46,25 @@ void gen(Node *node) {
       printf("  jmp .LWhileBegin%d\n", node->whiles->counter);
       printf(".LWhileEnd%d:\n", node->whiles->counter);
       return;
+    // for
+    case ND_FOR:
+      if (node->fors->init->kind != ND_EMPTY) {
+        gen(node->fors->init);
+      }
+      printf(".LForBegin%d:\n", node->fors->counter);
+      if (node->fors->cond->kind != ND_EMPTY) {
+        gen(node->fors->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .LForEnd%d\n", node->fors->counter);
+      }
+      gen(node->fors->body);
+      if (node->fors->final->kind != ND_EMPTY) {
+        gen(node->fors->final);
+      }
+      printf("  jmp .LForBegin%d\n", node->fors->counter);
+      printf(".LForEnd%d:\n", node->fors->counter);
+      return;
     // returnならスタックから値を取り出してRAXに入れる
     case ND_RETURN:
       gen(node->lhs);
@@ -76,6 +95,8 @@ void gen(Node *node) {
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
       return;
+    case ND_EMPTY:
+     return;
   }
 
   // 左辺を出力

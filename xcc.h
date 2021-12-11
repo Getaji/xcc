@@ -17,6 +17,7 @@ typedef enum {
   TK_IF,       // if
   TK_ELSE,     // else
   TK_WHILE,    // while
+  TK_FOR,      // for
   TK_IDENT,    // 識別子
   TK_NUM,      // 整数
   TK_EOF,      // 入力の終わり
@@ -49,6 +50,8 @@ typedef enum {
   ND_IF,     // if
   ND_ELSE,   // else
   ND_WHILE,  // while
+  ND_FOR,    // for
+  ND_EMPTY,
 } NodeKind;
 
 // if構文の型
@@ -56,6 +59,9 @@ typedef struct IfNodes IfNodes;
 
 // while構文の型
 typedef struct WhileNodes WhileNodes;
+
+// for構文の型
+typedef struct ForNodes ForNodes;
 
 // 抽象構文木のノードの型
 typedef struct Node Node;
@@ -67,6 +73,7 @@ struct Node {
   int offset;         // kindがND_LVARの場合のみ使う
   IfNodes *ifs;       // if構文の情報
   WhileNodes *whiles; // while構文の情報
+  ForNodes *fors;     // for構文の情報
 };
 
 struct IfNodes {
@@ -78,6 +85,14 @@ struct IfNodes {
 
 struct WhileNodes {
   Node *cond;
+  Node *body;
+  int counter;
+};
+
+struct ForNodes {
+  Node *init;
+  Node *cond;
+  Node *final;
   Node *body;
   int counter;
 };
@@ -122,3 +137,4 @@ extern Node *code[100];
 extern LVar *locals;
 extern int label_counter_if;
 extern int label_counter_while;
+extern int label_counter_for;

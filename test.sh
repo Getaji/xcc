@@ -81,4 +81,9 @@ assert 10 'if (0==1) 9; else 10;'
 assert 10 'x = 0; while (x < 10) x = x + 1; x;'
 assert 10 'x = 10; while (x < 0) x = x + 1; x;'
 
+assert 10 'for (x = 0; x < 10; x = x + 1) x;'
+assert 10 'for (x = 10; x < 0; x = x + 1) x;'
+assert 10 'x = 0; for (; x < 10;) x = x + 1;'
+assert 10 'for (;;) return 10;'
+
 echo OK

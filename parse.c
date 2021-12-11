@@ -20,6 +20,9 @@ int label_counter_if = 0;
 // アセンブリラベルカウンタ: while
 int label_counter_while = 0;
 
+// アセンブリラベルカウンタ: for
+int label_counter_for = 0;
+
 // エラーを報告するための関数
 // printfと同じ引数を取る
 void error(char *fmt, ...) {
@@ -199,6 +202,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
+      cur = new_token(TK_FOR, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     // 整数リテラル
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p, 0);
@@ -265,6 +274,7 @@ Node *expr() {
 // stmt = expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
+//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      | "return" expr ";"
 Node *stmt() {
   Node *node;
@@ -295,6 +305,36 @@ Node *stmt() {
     node->whiles->body = stmt();
 
     node->whiles->counter = label_counter_while++;
+
+    return node;
+  }
+
+  // "for" "(" expr? ";" expr? ";" expr? ")" stmt
+  if (consume_token(TK_FOR)) {
+    node = new_node(ND_FOR);
+    node->fors = calloc(1, sizeof(ForNodes));
+    expect("(");
+    if (consume_reserved(";")) {
+      node->fors->init = new_node(ND_EMPTY);
+    } else {
+      node->fors->init = expr();
+      expect(";");
+    }
+    if (consume_reserved(";")) {
+      node->fors->cond = new_node(ND_EMPTY);
+    } else {
+      node->fors->cond = expr();
+      expect(";");
+    }
+    if (consume_reserved(")")) {
+      node->fors->final = new_node(ND_EMPTY);
+    } else {
+      node->fors->final = expr();
+      expect(")");
+    }
+    node->fors->body = stmt();
+
+    node->fors->counter = label_counter_for++;
 
     return node;
   }
@@ -436,6 +476,11 @@ Node *primary() {
     }
 
     return node;
+  }
+
+  if (consume_reserved(";")) {
+    // TODO: 空のノードにちゃんと対応する
+    return new_node(ND_EMPTY);
   }
 
   // どれでもなければ数値ノードを返す
