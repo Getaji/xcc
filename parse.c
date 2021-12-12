@@ -466,7 +466,9 @@ LVar *find_lvar(Token *tok) {
 }
 
 // 括弧で囲われた式あるいは数値の構文木primaryを生成する
-// primary = "(" expr ")" | num
+// primary = num
+//         | ident ("(" ")")?
+//         | "(" expr ")"
 Node *primary() {
   // 括弧で囲われているなら式として再帰的に構文木を生成する
   if (consume_reserved("(")) {
@@ -475,24 +477,36 @@ Node *primary() {
     return node;
   }
 
-  // 識別子ならローカル変数ノードを返す
   Token *tok = consume_ident();
   if (tok) {
-    Node *node = new_node(ND_LVAR);
+    // 括弧があれば関数呼び出しとして処理
+    if (consume_reserved("(")) {
+      // まだ引数には対応しない
+      expect(")");
+      Node *node = new_node(ND_CALLFN);
+      node->callfn = calloc(1, sizeof(CallFn));
+      node->callfn->fnname = tok->str;
+      return node;
+    }
 
+    // 括弧がなければ変数として処理
+    Node *node = new_node(ND_LVAR);
     LVar *lvar = find_lvar(tok);
+
     if (lvar) {
       node->offset = lvar->offset;
     } else {
       lvar = calloc(1, sizeof(LVar));
       lvar->name = tok->str;
       lvar->len = tok->len;
+
       if (locals) {
         lvar->next = locals;
         lvar->offset = locals->offset + 8;
       } else {
         lvar->offset = 8;
       }
+
       node->offset = lvar->offset;
       locals = lvar;
     }

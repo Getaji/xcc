@@ -52,6 +52,7 @@ typedef enum {
   ND_WHILE,  // while
   ND_FOR,    // for
   ND_BLOCK,  // { stmt* }
+  ND_CALLFN, // 関数呼び出し
   ND_EMPTY,
 } NodeKind;
 
@@ -63,6 +64,9 @@ typedef struct WhileNodes WhileNodes;
 
 // for構文の型
 typedef struct ForNodes ForNodes;
+
+// for構文の型
+typedef struct CallFn CallFn;
 
 // 抽象構文木のノードの型
 typedef struct Node Node;
@@ -76,7 +80,8 @@ struct Node {
   WhileNodes *whiles; // while構文の情報
   ForNodes *fors;     // for構文の情報
   Node **stmts;       // ブロックなどが持つ複数ノード
-  int stmts_len;    // stmtsの長さ
+  int stmts_len;      // stmtsの長さ
+  CallFn *callfn;      // 関数呼び出しの情報
 };
 
 struct IfNodes {
@@ -98,6 +103,10 @@ struct ForNodes {
   Node *final;
   Node *body;
   int counter;
+};
+
+struct CallFn {
+  char *fnname;
 };
 
 // ローカル変数の型

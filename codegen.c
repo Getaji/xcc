@@ -85,6 +85,9 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
+    case ND_CALLFN:
+      printf("  call %s\n", node->callfn->fnname);
+      return;
     // 変数なら変数から値を参照して積む
     case ND_LVAR:
       gen_lval(node);

@@ -4,7 +4,7 @@ assert() {
   input="$2"
 
   ./xcc "$input" > tmp.s
-  cc -o tmp tmp.s
+  cc -o tmp samplefn.o tmp.s
   ./tmp
   actual="$?"
 
