@@ -1,5 +1,8 @@
 #include "xcc.h"
 
+// 関数呼び出しの引数渡しに利用できるレジスタ（順番通り）
+char *ARG_STACK_NAMES[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
 // 代入の左辺値のアセンブリコードを出力する
 void gen_lval(Node *node) {
   if (node->kind != ND_LVAR)
@@ -85,7 +88,16 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
+    // 関数呼び出し
     case ND_CALLFN:
+      for (int i = 0; i < node->callfn->args_count; i++) {
+        gen(node->callfn->args[i]);
+        printf("  pop %s\n", ARG_STACK_NAMES[i]);
+      }
+      if (node->callfn->args_count > 0) {
+        // 関数呼び出しの前にRSPを16バイト確保する
+        printf("  sub rsp, 16\n");
+      }
       printf("  call %s\n", node->callfn->fnname);
       return;
     // 変数なら変数から値を参照して積む

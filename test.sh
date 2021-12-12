@@ -93,6 +93,8 @@ assert 10 '{} 10;'
 assert 10 '{0;0;0;0;0;0;0;0;0;10;}'   # 10個
 assert 10 '{0;0;0;0;0;0;0;0;0;0;10;}' # 11個
 
-assert 10 'foo();10;'
+assert 10 'noargs();10;'
+assert 10 'square(2);10;'
+assert 10 'sum(1,2);10;'
 
 echo OK

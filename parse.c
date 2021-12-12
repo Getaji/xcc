@@ -119,12 +119,24 @@ bool starts_with(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
-// 文字列の先頭からアルファベットで構成された文字列部分を切り出す
-char *match_alphabets(char *p) {
-  int len = 0;
+// 文字が英数字またはアンダースコアなら真を返す
+bool is_alnum(char c) {
+  return ('a' <= c && c <= 'z') ||
+         ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') ||
+         (c == '_');
+}
+
+// 文字列の先頭から[\w_]+で構成された文字列部分を切り出す
+char *match_ident_str(char *p) {
+  int len = 1;
+
+  if (p[0] && '0' <= p[0] && p[0] <= '9') {
+    return NULL;
+  }
 
   while (p[len]) {
-    if ('a' <= p[len] && p[len] <= 'z') {
+    if (is_alnum(p[len])) {
       len++;
     } else {
       break;
@@ -139,14 +151,6 @@ char *match_alphabets(char *p) {
   memcpy(s, p, len);
 
   return s;
-}
-
-// 文字が英数字またはアンダースコアなら真を返す
-bool is_alnum(char c) {
-  return ('a' <= c && c <= 'z') ||
-         ('A' <= c && c <= 'Z') ||
-         ('0' <= c && c <= '9') ||
-         (c == '_');
 }
 
 // 入力文字列pをトークナイズして返す
@@ -173,7 +177,7 @@ Token *tokenize(char *p) {
     }
 
     // 1文字の演算子と括弧
-    if (strchr("+-*/(){}<>=;", *p)) {
+    if (strchr("+-*/(){}<>=;,", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -217,8 +221,8 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    // 変数リテラル
-    char *ident_str = match_alphabets(p);
+    // 識別子リテラル
+    char *ident_str = match_ident_str(p);
     if (ident_str) {
       cur = new_token(TK_IDENT, cur, ident_str, 1);
       cur->len = strlen(ident_str);
@@ -369,7 +373,7 @@ Node *stmt() {
   }
 
   if (!consume_reserved(";"))
-    error_at(token->str, "';'ではないトークンです");
+    error_at(token->str, "';'ではないトークンです？？？？");
   return node;
 }
 
@@ -467,7 +471,7 @@ LVar *find_lvar(Token *tok) {
 
 // 括弧で囲われた式あるいは数値の構文木primaryを生成する
 // primary = num
-//         | ident ("(" ")")?
+//         | ident ("(" ( expr ("," expr)* )? ")")?
 //         | "(" expr ")"
 Node *primary() {
   // 括弧で囲われているなら式として再帰的に構文木を生成する
@@ -481,11 +485,27 @@ Node *primary() {
   if (tok) {
     // 括弧があれば関数呼び出しとして処理
     if (consume_reserved("(")) {
-      // まだ引数には対応しない
-      expect(")");
       Node *node = new_node(ND_CALLFN);
       node->callfn = calloc(1, sizeof(CallFn));
       node->callfn->fnname = tok->str;
+      node->callfn->args = calloc(CALLFN_ARGS_MAX_COUNT, sizeof(Node));
+      // 引数を読み込む
+      int i = 0;
+      while (!consume_reserved(")")) {
+        if (i > 0) {
+          expect(",");
+        }
+        if (i == CALLFN_ARGS_MAX_COUNT) {
+          error_at(
+            token->str,
+            "関数の引数は%d個以内に収めてください",
+            CALLFN_ARGS_MAX_COUNT
+          );
+        }
+        node->callfn->args[i++] = expr();
+      }
+      // TODO: ここでargsを再割り当てして切り詰めてもよさそう
+      node->callfn->args_count = i;
       return node;
     }
 

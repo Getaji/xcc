@@ -65,7 +65,7 @@ typedef struct WhileNodes WhileNodes;
 // for構文の型
 typedef struct ForNodes ForNodes;
 
-// for構文の型
+// 関数呼び出し構文の型
 typedef struct CallFn CallFn;
 
 // 抽象構文木のノードの型
@@ -81,7 +81,7 @@ struct Node {
   ForNodes *fors;     // for構文の情報
   Node **stmts;       // ブロックなどが持つ複数ノード
   int stmts_len;      // stmtsの長さ
-  CallFn *callfn;      // 関数呼び出しの情報
+  CallFn *callfn;     // 関数呼び出しの情報
 };
 
 struct IfNodes {
@@ -107,6 +107,8 @@ struct ForNodes {
 
 struct CallFn {
   char *fnname;
+  Node **args;
+  int args_count;
 };
 
 // ローカル変数の型
@@ -154,3 +156,6 @@ extern int label_counter_for;
 // ブロック内の行ノードを保持する配列のアロケート単位
 // パース時にこの単位でサイズを超えるたびにリアロケートする
 #define STMT_ARR_ALLOC_UNIT 10
+
+// 関数呼び出しの引数の最大個数
+#define CALLFN_ARGS_MAX_COUNT 6

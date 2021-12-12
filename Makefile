@@ -2,8 +2,9 @@ CFLAGS=-std=c11 -g -static
 DEPENDENCIES=$(wildcard *.c)
 SRCS=$(filter-out samplefn.c, $(wildcard *.c))
 OBJS=$(SRCS:.c=.o)
+DOBJS=$(DEPENDENCIES:.c=.o)
 
-xcc: $(DEPENDENCIES)
+xcc: $(DOBJS)
 	$(CC) -c samplefn.c
 	$(CC) -o xcc $(OBJS) $(LDFLAGS)
 
