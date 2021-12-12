@@ -34,17 +34,17 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       if (node->ifs->else_body) {
-        printf("  je .LForElse%d\n", node->ifs->counter);
+        printf("  je .LIfElse%d\n", node->ifs->counter);
       } else {
-        printf("  je .LForEnd%d\n", node->ifs->counter);
+        printf("  je .LIfEnd%d\n", node->ifs->counter);
       }
       gen(node->ifs->then_body);
       if (node->ifs->else_body) {
-        printf("  jmp .LForEnd%d\n", node->ifs->counter);
-        printf(".LForElse%d:\n", node->ifs->counter);
+        printf("  jmp .LIfEnd%d\n", node->ifs->counter);
+        printf(".LIfElse%d:\n", node->ifs->counter);
         gen(node->ifs->else_body);
       }
-      printf(".LForEnd%d:\n", node->ifs->counter);
+      printf(".LIfEnd%d:\n", node->ifs->counter);
       return;
     // while
     case ND_WHILE:
