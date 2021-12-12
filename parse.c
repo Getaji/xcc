@@ -127,11 +127,13 @@ bool is_alnum(char c) {
          (c == '_');
 }
 
-// 文字列の先頭から[\w_]+で構成された文字列部分を切り出す
+// 文字列の先頭から/[a-zA-Z_][\w_]*/で構成された文字列部分を切り出す
 char *match_ident_str(char *p) {
   int len = 1;
 
-  if (p[0] && '0' <= p[0] && p[0] <= '9') {
+  if (!(('a' <= p[0] && p[0] <= 'z') ||
+        ('A' <= p[0] && p[0] <= 'Z') ||
+        (p[0] == '_'))) {
     return NULL;
   }
 
@@ -373,7 +375,7 @@ Node *stmt() {
   }
 
   if (!consume_reserved(";"))
-    error_at(token->str, "';'ではないトークンです？？？？");
+    error_at(token->str, "';'ではないトークンです");
   return node;
 }
 
