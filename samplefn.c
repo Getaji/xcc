@@ -1,2 +1,2 @@
 // xccが出力したアセンブリとリンクさせる
-int foo() { printf("OK\n"); }
+int foo() { printf("samplefn: OK\n"); }
