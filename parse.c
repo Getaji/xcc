@@ -263,29 +263,61 @@ Node *new_num_node(int val) {
 
 // 代入の構文木assignを生成する
 // assign = equality ("=" assign)?
-Node *assign() {
-  Node *node = equality();
+Node *syntax_assign() {
+  Node *node = syntax_equality();
   if (consume_reserved("="))
-    node = new_binary_node(ND_ASSIGN, node, assign());
+    node = new_binary_node(ND_ASSIGN, node, syntax_assign());
   return node;
 }
 
 // 式の構文木exprを生成する
 // expr = assign
-Node *expr() {
-  return assign();
+Node *syntax_expr() {
+  return syntax_assign();
 }
 
-// 文の構文木stmtを生成する
-// stmt = expr ";"
-//      | "{" stmt* "}"
-//      | "if" "(" expr ")" stmt ("else" stmt)?
-//      | "while" "(" expr ")" stmt
-//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//      | "return" expr ";"
-Node *stmt() {
-  Node *node;
+// defn = ident "(" (ident ("," ident)*)? ")" block
+Node *syntax_defn() {
+  Token *tok = consume_ident();
+  if (tok) {
+    Node *node = new_node(ND_DEFN);
+    node->defn = calloc(1, sizeof(DefineFn));
+    node->defn->name = tok->str;
+    node->defn->args = calloc(6, sizeof(int));
+    expect("(");
+    int argi = 0;
+    while (!consume_reserved(")")) {
+      if (argi > 0) {
+        expect(",");
+      }
+      if (argi == DEFN_ARGS_MAX_COUNT) {
+        error_at(
+          token->str,
+          "関数の引数は%d個以内に収めてください",
+          DEFN_ARGS_MAX_COUNT
+        );
+      }
+      Token *arg_ident = consume_ident();
+      if (!arg_ident) {
+        error_at(token->str, "引数名には識別子以外を記述できません");
+      }
+      node->defn->args[argi++] = arg_ident->str;
+    }
+    node->defn->args_count = argi;
 
+    Node* block = syntax_block();
+    if (!block) {
+      error_at(token->str, "関数には本体ブロックが必要です");
+    }
+    node->defn->body = block;
+    return node;
+  }
+  
+  error_at(token->str, "トップレベルは関数定義のみ許可されます");
+}
+
+// block = "{" stmt* "}"
+Node *syntax_block() {
   if (consume_reserved("{")) {
     Node *node = new_node(ND_BLOCK);
 
@@ -300,23 +332,40 @@ Node *stmt() {
         current_size += STMT_ARR_ALLOC_UNIT;
         nodes = (Node**)realloc(nodes, sizeof(Node) * current_size);
       }
-      nodes[count++] = stmt();
+      nodes[count++] = syntax_stmt();
     }
     node->stmts = nodes;
     node->stmts_len = count;
     return node;
   }
 
+  return NULL;
+}
+
+// 文の構文木stmtを生成する
+// stmt = expr ";"
+//      | block
+//      | "if" "(" expr ")" stmt ("else" stmt)?
+//      | "while" "(" expr ")" stmt
+//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      | "return" expr ";"
+Node *syntax_stmt() {
+  Node *node;
+
+  Node *block_node = syntax_block();
+  if (block_node)
+    return block_node;
+
   if (consume_token(TK_IF)) {
     node = new_node(ND_IF);
     node->ifs = calloc(1, sizeof(IfNodes));
     expect("(");
-    node->ifs->cond = expr();
+    node->ifs->cond = syntax_expr();
     expect(")");
-    node->ifs->then_body = stmt();
+    node->ifs->then_body = syntax_stmt();
 
     if (consume_token(TK_ELSE)) {
-      node->ifs->else_body = stmt();
+      node->ifs->else_body = syntax_stmt();
     }
 
     node->ifs->counter = label_counter_if++;
@@ -328,9 +377,9 @@ Node *stmt() {
     node = new_node(ND_WHILE);
     node->whiles = calloc(1, sizeof(WhileNodes));
     expect("(");
-    node->whiles->cond = expr();
+    node->whiles->cond = syntax_expr();
     expect(")");
-    node->whiles->body = stmt();
+    node->whiles->body = syntax_stmt();
 
     node->whiles->counter = label_counter_while++;
 
@@ -345,22 +394,22 @@ Node *stmt() {
     if (consume_reserved(";")) {
       node->fors->init = new_node(ND_EMPTY);
     } else {
-      node->fors->init = expr();
+      node->fors->init = syntax_expr();
       expect(";");
     }
     if (consume_reserved(";")) {
       node->fors->cond = new_node(ND_EMPTY);
     } else {
-      node->fors->cond = expr();
+      node->fors->cond = syntax_expr();
       expect(";");
     }
     if (consume_reserved(")")) {
       node->fors->final = new_node(ND_EMPTY);
     } else {
-      node->fors->final = expr();
+      node->fors->final = syntax_expr();
       expect(")");
     }
-    node->fors->body = stmt();
+    node->fors->body = syntax_stmt();
 
     node->fors->counter = label_counter_for++;
 
@@ -369,9 +418,9 @@ Node *stmt() {
 
   if (consume_token(TK_RETURN)) {
     node = new_node(ND_RETURN);
-    node->lhs = expr();
+    node->lhs = syntax_expr();
   } else {
-    node = expr();
+    node = syntax_expr();
   }
 
   if (!consume_reserved(";"))
@@ -379,25 +428,25 @@ Node *stmt() {
   return node;
 }
 
-// 終端に到達するまでstmtを読み込む
-void program() {
+// 終端に到達するまでdefnを読み込む
+void read_program() {
   int i = 0;
   while (!at_eof()) {
-    code[i++] = stmt();
+    code[i++] = syntax_defn();
   }
   code[i] = NULL;
 }
 
 // 一致比較の構文木equalityを生成する
 // equality = relational ("==" relational | "!=" relational)*
-Node *equality() {
-  Node *node = relational();
+Node *syntax_equality() {
+  Node *node = syntax_relational();
 
   for (;;) {
     if (consume_reserved("=="))
-      node = new_binary_node(ND_EQ, node, relational());
+      node = new_binary_node(ND_EQ, node, syntax_relational());
     else if (consume_reserved("!="))
-      node = new_binary_node(ND_NE, node, relational());
+      node = new_binary_node(ND_NE, node, syntax_relational());
     else
       return node;
   }
@@ -405,18 +454,18 @@ Node *equality() {
 
 // 関係比較の構文木relationalを生成する
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-Node *relational() {
-  Node *node = add();
+Node *syntax_relational() {
+  Node *node = syntax_add();
 
   for (;;) {
     if (consume_reserved("<"))
-      node = new_binary_node(ND_LT, node, add());
+      node = new_binary_node(ND_LT, node, syntax_add());
     else if (consume_reserved("<="))
-      node = new_binary_node(ND_LE, node, add());
+      node = new_binary_node(ND_LE, node, syntax_add());
     else if (consume_reserved(">"))
-      node = new_binary_node(ND_LT, add(), node);
+      node = new_binary_node(ND_LT, syntax_add(), node);
     else if (consume_reserved(">="))
-      node = new_binary_node(ND_LE, add(), node);
+      node = new_binary_node(ND_LE, syntax_add(), node);
     else
       return node;
   }
@@ -424,14 +473,14 @@ Node *relational() {
 
 // 加算・減算の構文木addを生成する
 // add = mul ("+" mul | "-" mul)*
-Node *add() {
-  Node *node = mul();
+Node *syntax_add() {
+  Node *node = syntax_mul();
 
   for (;;) {
     if (consume_reserved("+"))
-      node = new_binary_node(ND_ADD, node, mul());
+      node = new_binary_node(ND_ADD, node, syntax_mul());
     else if (consume_reserved("-"))
-      node = new_binary_node(ND_SUB, node, mul());
+      node = new_binary_node(ND_SUB, node, syntax_mul());
     else
       return node;
   }
@@ -439,14 +488,14 @@ Node *add() {
 
 // 乗算・除算の構文木mulを生成する
 // mul = unary ("*" unary | "/" unary)*
-Node *mul() {
-  Node *node = unary();
+Node *syntax_mul() {
+  Node *node = syntax_unary();
 
   for (;;) {
     if (consume_reserved("*"))
-      node = new_binary_node(ND_MUL, node, unary());
+      node = new_binary_node(ND_MUL, node, syntax_unary());
     else if (consume_reserved("/"))
-      node = new_binary_node(ND_DIV, node, unary());
+      node = new_binary_node(ND_DIV, node, syntax_unary());
     else
       return node;
   }
@@ -455,30 +504,22 @@ Node *mul() {
 // 単項演算の構文木unaryを生成する
 // unary = ("+" | "-")? unary
 //       | primary
-Node *unary() {
+Node *syntax_unary() {
   if (consume_reserved("+"))
-    return unary();
+    return syntax_unary();
   if (consume_reserved("-"))
-    return new_binary_node(ND_SUB, new_num_node(0), unary());
-  return primary();
-}
-
-// 変数を名前で検索する。見つからなかった場合はNULLを返す。
-LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next)
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
-      return var;
-  return NULL;
+    return new_binary_node(ND_SUB, new_num_node(0), syntax_unary());
+  return syntax_primary();
 }
 
 // 括弧で囲われた式あるいは数値の構文木primaryを生成する
 // primary = num
 //         | ident ("(" ( expr ("," expr)* )? ")")?
 //         | "(" expr ")"
-Node *primary() {
+Node *syntax_primary() {
   // 括弧で囲われているなら式として再帰的に構文木を生成する
   if (consume_reserved("(")) {
-    Node *node = expr();
+    Node *node = syntax_expr();
     expect(")");
     return node;
   }
@@ -504,7 +545,7 @@ Node *primary() {
             CALLFN_ARGS_MAX_COUNT
           );
         }
-        node->callfn->args[i++] = expr();
+        node->callfn->args[i++] = syntax_expr();
       }
       // TODO: ここでargsを再割り当てして切り詰めてもよさそう
       node->callfn->args_count = i;
@@ -513,25 +554,7 @@ Node *primary() {
 
     // 括弧がなければ変数として処理
     Node *node = new_node(ND_LVAR);
-    LVar *lvar = find_lvar(tok);
-
-    if (lvar) {
-      node->offset = lvar->offset;
-    } else {
-      lvar = calloc(1, sizeof(LVar));
-      lvar->name = tok->str;
-      lvar->len = tok->len;
-
-      if (locals) {
-        lvar->next = locals;
-        lvar->offset = locals->offset + 8;
-      } else {
-        lvar->offset = 8;
-      }
-
-      node->offset = lvar->offset;
-      locals = lvar;
-    }
+    node->lvar_name = tok->str;
 
     return node;
   }

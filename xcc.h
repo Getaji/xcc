@@ -53,6 +53,7 @@ typedef enum {
   ND_FOR,    // for
   ND_BLOCK,  // { stmt* }
   ND_CALLFN, // 関数呼び出し
+  ND_DEFN,   // 関数定義
   ND_EMPTY,
 } NodeKind;
 
@@ -68,6 +69,9 @@ typedef struct ForNodes ForNodes;
 // 関数呼び出し構文の型
 typedef struct CallFn CallFn;
 
+// 関数定義構文の型
+typedef struct DefineFn DefineFn;
+
 // 抽象構文木のノードの型
 typedef struct Node Node;
 struct Node {
@@ -76,12 +80,14 @@ struct Node {
   Node *rhs;          // 右辺
   int val;            // kindがND_NUMの場合のみ使う
   int offset;         // kindがND_LVARの場合のみ使う
+  char *lvar_name;    // ローカル変数の名前
   IfNodes *ifs;       // if構文の情報
   WhileNodes *whiles; // while構文の情報
   ForNodes *fors;     // for構文の情報
   Node **stmts;       // ブロックなどが持つ複数ノード
   int stmts_len;      // stmtsの長さ
   CallFn *callfn;     // 関数呼び出しの情報
+  DefineFn *defn;     // 関数定義の情報
 };
 
 struct IfNodes {
@@ -111,6 +117,13 @@ struct CallFn {
   int args_count;
 };
 
+struct DefineFn {
+  char *name;
+  char **args;
+  int args_count;
+  Node *body;
+};
+
 // ローカル変数の型
 typedef struct LVar LVar;
 struct LVar {
@@ -124,20 +137,36 @@ extern void error(char *fmt, ...);
 extern void error_at(char *loc, char *fmt, ...);
 extern Token *tokenize(char*);
 
-extern void program();
-extern Node *stmt();
-extern Node *expr();
-extern Node *assign();
-extern Node *equality();
-extern Node *relational();
-extern Node *add();
-extern Node *mul();
-extern Node *unary();
-extern Node *primary();
+extern void read_program();
+extern Node *syntax_block();
+extern Node *syntax_defn();
+extern Node *syntax_stmt();
+extern Node *syntax_expr();
+extern Node *syntax_assign();
+extern Node *syntax_equality();
+extern Node *syntax_relational();
+extern Node *syntax_add();
+extern Node *syntax_mul();
+extern Node *syntax_unary();
+extern Node *syntax_primary();
 
 // -----------------------------------------------------------------------------
 // Code Generator
 // -----------------------------------------------------------------------------
+
+// ローカル変数の型（新）
+typedef struct LocalVar LocalVar;
+struct LocalVar {
+  char *name; // 変数の名前
+  int index;  // 変数が割り当てられるインデックス
+};
+
+// ローカル変数のコンスセルの型
+typedef struct LocalVarCons LocalVarCons;
+struct LocalVarCons {
+  LocalVar *car;
+  LocalVarCons *cdr;
+};
 
 extern void gen(Node *node);
 
@@ -159,3 +188,6 @@ extern int label_counter_for;
 
 // 関数呼び出しの引数の最大個数
 #define CALLFN_ARGS_MAX_COUNT 6
+
+// 関数定義の引数の最大個数
+#define DEFN_ARGS_MAX_COUNT 6
